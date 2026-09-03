@@ -1,14 +1,13 @@
 import random
 import asyncio
 import aiohttp
-import sys  # ← ДОБАВИЛИ ЭТОТ ИМПОРТ
+import sys
 import os
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
-from aiogram.client.default import DefaultBotProperties
 
 # ===== ЭТО ДЛЯ WINDOWS (решает проблемы с соединением) =====
-if sys.platform == "win32":  # ← ТЕПЕРЬ ЭТО РАБОТАЕТ ТОЛЬКО НА WINDOWS
+if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
 # ================== ВАШИ ДАННЫЕ (БЕРЁМ ИЗ ПЕРЕМЕННЫХ ОКРУЖЕНИЯ) ==================
@@ -17,7 +16,6 @@ YOUR_USER_ID = int(os.getenv("YOUR_USER_ID"))
 FRIEND_IDS = os.getenv("FRIEND_IDS", "")
 FRIEND_ID = [int(x.strip()) for x in FRIEND_IDS.split(",") if x.strip()]
 
-# Проверяем, что переменные заданы
 if not BOT_TOKEN:
     print("❌ ОШИБКА: BOT_TOKEN не задан!")
     exit(1)
@@ -137,13 +135,8 @@ def make_cute_reply(text: str) -> str:
     ]
     return random.choice(casual_replies) + " " + random.choice(CUTE_SUFFIXES)
 
-# ================== СОЗДАНИЕ БОТА ==================
-bot = Bot(
-    token=BOT_TOKEN,
-    default=DefaultBotProperties(
-        request_timeout=60
-    )
-)
+# ================== СОЗДАНИЕ БОТА (УБРАЛИ ЛИШНИЙ ПАРАМЕТР!) ==================
+bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
 # ================== ОБРАБОТЧИК ==================
