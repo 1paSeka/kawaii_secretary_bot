@@ -3,6 +3,7 @@ import asyncio
 import aiohttp
 import sys
 import os
+import datetime
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiohttp import web
@@ -147,7 +148,7 @@ GOOD_MORNING_MESSAGES = [
 Люблю тебя очень-очень сильно! ♡♡♡ (◕‿◕)"""
 ]
 
-# ===== АВТОМАТИЧЕСКИЕ СООБЩЕНИЯ КАЖДЫЙ ЧАС =====
+# ===== АВТОМАТИЧЕСКИЕ СООБЩЕНИЯ =====
 AUTO_MESSAGES = [
     "Приветик! 💕 Как у тебя дела? Я тут скучаю по тебе! (◕‿◕)",
     "Ня~ Как настроение? Я уже заскучала без твоих сообщений! ♡",
@@ -160,6 +161,13 @@ AUTO_MESSAGES = [
     "Час пролетел, а я всё думаю о тебе! Как настроение? ✨",
     "Привееет! Я соскучилась! Расскажи, что у тебя нового? 💕"
 ]
+
+# ===== ПРОВЕРКА ВРЕМЕНИ (ОТПРАВЛЯЕМ С 5:00 ДО 23:00) =====
+def is_night_time() -> bool:
+    """Проверяет, сейчас ночь (с 23:00 до 5:00)"""
+    now = datetime.datetime.now()
+    hour = now.hour
+    return hour < 5 or hour >= 23  # Ночь с 23:00 до 5:00
 
 BAD_WORDS = [
     "бля", "блять", "сука", "хуй", "хер", "пизда", "пиздец",
@@ -198,7 +206,7 @@ def make_cute_reply(text: str):
     if any(word in text_lower for word in ["перестань", "хватит", "прекрати", "стоп", "stop"]):
         return random.choice(STOP_PHRASES)
     
-    if any(word in text_lower for word in ["не играй", "не шути", "без шуток", "серьёзно", "серьезно"]):
+    if any(word in text_lower for word in ["не играй", "не шути", "без шуток", "серьёзно"]):
         return random.choice(DONT_PLAY)
     
     if text.endswith('.'):
@@ -223,30 +231,31 @@ def make_cute_reply(text: str):
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
-# ================== ФОНОВАЯ ЗАДАЧА ДЛЯ АВТОМАТИЧЕСКИХ СООБЩЕНИЙ ==================
+# ================== ФОНОВАЯ ЗАДАЧА ==================
 async def send_periodic_messages():
-    """Отправляет сообщение каждые 60 минут"""
-    # Сначала ждём 30 секунд перед первым сообщением, чтобы бот успел запуститься
+    """Отправляет сообщение каждые 60 минут (только с 5:00 до 23:00)"""
     await asyncio.sleep(30)
     
     while True:
         try:
-            # Ждём 60 минут (3600 секунд)
             await asyncio.sleep(3600)
             
-            # Выбираем случайное сообщение
+            # Проверяем, день сейчас или ночь
+            if is_night_time():
+                print(f"🌙 Сейчас ночь ({datetime.datetime.now().strftime('%H:%M')}), сообщение не отправлено")
+                continue
+            
             msg = random.choice(AUTO_MESSAGES)
             
-            # Отправляем каждому другу
             for friend_id in FRIEND_ID:
                 try:
                     await bot.send_message(
                         chat_id=friend_id,
                         text=msg
                     )
-                    print(f"✅ Авто-сообщение отправлено другу {friend_id}")
+                    print(f"✅ Авто-сообщение отправлено другу {friend_id} в {datetime.datetime.now().strftime('%H:%M')}")
                 except Exception as e:
-                    print(f"❌ Ошибка при отправке авто-сообщения другу {friend_id}: {e}")
+                    print(f"❌ Ошибка при отправке авто-сообщения: {e}")
                     
         except Exception as e:
             print(f"❌ Ошибка в фоновой задаче: {e}")
@@ -310,7 +319,7 @@ async def start_command(message: types.Message):
             "• Часто признаваться в любви! ♡\n"
             "• На 'Спокойной ночи' отвечаю ДВУМЯ сообщениями! 🌙\n"
             "• На 'Доброе утро' отправляю БОЛЬШОЕ сообщение с заботой! 🌅\n"
-            "• КАЖДЫЙ ЧАС пишу 'Как дела?' и 'Я соскучилась'! ⏰\n\n"
+            "• КАЖДЫЙ ЧАС с 5:00 до 23:00 пишу 'Как дела?' ⏰\n\n"
             "Просто попроси друзей написать тебе, и я отвечу!"
         )
 
@@ -338,12 +347,13 @@ async def main():
     print("💕 Ожидаю сообщения...")
     print("🌙 Будет отвечать на 'Спокойной ночи' ДВУМЯ сообщениями!")
     print("🌅 Будет отвечать на 'Доброе утро' БОЛЬШИМ сообщением с заботой!")
-    print("⏰ Будет писать друзьям КАЖДЫЙ ЧАС! (как дела и соскучилась)")
+    print("⏰ Будет писать друзьям КАЖДЫЙ ЧАС с 5:00 до 23:00!")
+    print("🌙 Ночью (23:00-5:00) автоматические сообщения ОТКЛЮЧЕНЫ!")
     
     await asyncio.gather(
         dp.start_polling(bot),
         start_web_server(),
-        send_periodic_messages()  # ← ЗАПУСКАЕМ ФОНОВУЮ ЗАДАЧУ
+        send_periodic_messages()
     )
 
 if __name__ == "__main__":
