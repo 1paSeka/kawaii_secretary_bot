@@ -1,17 +1,29 @@
 import random
 import asyncio
+import aiohttp
+import os  # ← ЭТО НОВОЕ!
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
+from aiogram.client.default import DefaultBotProperties
 
-# ================== ВАШИ ДАННЫЕ ==================
-BOT_TOKEN = "8832864552:AAFAIyImLqGmgoW3ChsLTuK4hZfUcD87Ts4"  # Вставь токен
-YOUR_USER_ID = 5165249507  # Вставь свой ID
+# ===== ЭТО ДЛЯ WINDOWS (решает проблемы с соединением) =====
+asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
-# ===== ТЕПЕРЬ ЭТО СПИСОК ДРУЗЕЙ =====
-FRIEND_ID = [
-    5170507009,  # ID первого друга
-    7974783558,  # ID второго друга
-]
+# ================== ВАШИ ДАННЫЕ (БЕРЁМ ИЗ ПЕРЕМЕННЫХ ОКРУЖЕНИЯ) ==================
+BOT_TOKEN = os.getenv("8832864552:AAFAIyImLqGmgoW3ChsLTuK4hZfUcD87Ts4")
+YOUR_USER_ID = int(os.getenv("5165249507"))
+FRIEND_IDS = os.getenv("5170507009", "7974783558")
+FRIEND_ID = [int(x.strip()) for x in FRIEND_IDS.split(",") if x.strip()]
+
+# Проверяем, что переменные заданы
+if not BOT_TOKEN:
+    print("❌ ОШИБКА: BOT_TOKEN не задан!")
+    exit(1)
+if not YOUR_USER_ID:
+    print("❌ ОШИБКА: YOUR_USER_ID не задан!")
+    exit(1)
+if not FRIEND_ID:
+    print("⚠️ ВНИМАНИЕ: FRIEND_IDS не задан! Бот не будет отвечать никому.")
 
 # ================== КАВАЙНЫЙ СТИЛЬ ==================
 CUTE_SUFFIXES = [
@@ -20,12 +32,6 @@ CUTE_SUFFIXES = [
     " (◠‿◠) 🌺", " ~мяу~ 💝"
 ]
 
-CUTE_PREFIXES = [
-    "Ня~ ", "Ой-ой~ ", "Мяу! ", "Приветик! ",
-    "Солнышко, ", "Зайка, ", "Лапулька, "
-]
-
-# ================== ОСНОВНЫЕ ФРАЗЫ ==================
 GREETINGS = [
     "Приветик-привет! Как я рада тебя видеть! (◕‿◕) 💕",
     "Ня~ Ты мне написал! Мой день стал лучше! ♡",
@@ -67,8 +73,7 @@ LOVE_MESSAGES = [
     "Ты самое лучшее, что случилось в моей жизни! Я тебя обожаю! ✨🌸",
     "Люблю тебя бесконечно! Ты мой самый любимый человек! 💗",
     "Я тебя очень-очень сильно люблю! Никогда не забывай об этом! (◠‿◠) 💖",
-    "Моё сердечко бьётся только для тебя! Я тебя люблю! ♡♡♡",
-    "Ты мой свет в окошке! Люблю тебя больше всего на свете! ✨💕"
+    "Моё сердечко бьётся только для тебя! Я тебя люблю! ♡♡♡"
 ]
 
 CALMING_MESSAGES = [
@@ -78,7 +83,6 @@ CALMING_MESSAGES = [
     "Пожалуйста, не сердись... Я хочу, чтобы ты улыбнулся! (◕‿◕) ✨"
 ]
 
-# ================== ФУНКЦИЯ ПРОВЕРКИ МАТА ==================
 BAD_WORDS = [
     "бля", "блять", "сука", "хуй", "хер", "пизда", "пиздец",
     "ёба", "ебал", "ебать", "нахуй", "охуел", "заебал",
@@ -86,16 +90,13 @@ BAD_WORDS = [
 ]
 
 def has_bad_words(text: str) -> bool:
-    """Проверяет, есть ли в тексте матерные слова"""
     text_lower = text.lower()
     for word in BAD_WORDS:
         if word in text_lower:
             return True
     return False
 
-# ================== ФУНКЦИЯ КАВАЙНОГО ОТВЕТА ==================
 def make_cute_reply(text: str) -> str:
-    """Выбирает кавайный ответ в зависимости от текста"""
     text_lower = text.lower().strip()
     
     if has_bad_words(text):
@@ -135,18 +136,20 @@ def make_cute_reply(text: str) -> str:
     return random.choice(casual_replies) + " " + random.choice(CUTE_SUFFIXES)
 
 # ================== СОЗДАНИЕ БОТА ==================
-bot = Bot(token=BOT_TOKEN)
+bot = Bot(
+    token=BOT_TOKEN,
+    default=DefaultBotProperties(
+        request_timeout=60
+    )
+)
 dp = Dispatcher()
 
-# ================== ОБРАБОТЧИК ДЛЯ АВТОМАТИЗАЦИИ ==================
+# ================== ОБРАБОТЧИК ==================
 @dp.business_message()
 async def handle_business_message(message: types.Message):
-    """Обрабатывает сообщения в подключённых чатах"""
-    
     if not message.chat or message.chat.type != "private":
         return
     
-    # ===== ПРОВЕРЯЕМ, ЧТО СООБЩЕНИЕ ОТ ОДНОГО ИЗ ДРУЗЕЙ =====
     if FRIEND_ID and message.from_user.id not in FRIEND_ID:
         return
     
@@ -175,7 +178,6 @@ async def handle_business_message(message: types.Message):
     except Exception as e:
         print(f"❌ Ошибка: {e}")
 
-# ================== КОМАНДА /start ==================
 @dp.message(Command("start"))
 async def start_command(message: types.Message):
     if message.from_user.id == YOUR_USER_ID and message.chat.type == "private":
@@ -191,7 +193,6 @@ async def start_command(message: types.Message):
             "Просто попроси друзей написать тебе, и я отвечу!"
         )
 
-# ================== ЗАПУСК ==================
 async def main():
     print("🌸 Кавайный секретарь запущен!")
     print(f"👤 Твой ID: {YOUR_USER_ID}")
