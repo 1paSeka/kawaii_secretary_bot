@@ -5,6 +5,7 @@ import sys
 import os
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
+from aiohttp import web
 
 # ===== ЭТО ДЛЯ WINDOWS (решает проблемы с соединением) =====
 if sys.platform == "win32":
@@ -83,6 +84,14 @@ CALMING_MESSAGES = [
     "Пожалуйста, не сердись... Я хочу, чтобы ты улыбнулся! (◕‿◕) ✨"
 ]
 
+# ===== НОВЫЕ ФРАЗЫ ДЛЯ СНА =====
+SLEEP_MESSAGES = [
+    ["Спокойной ночи, мой хороший! 🌙✨ Пусть тебе приснятся самые сладкие сны! 💕", "Я буду ждать тебя завтра! Люблю тебя очень-очень сильно! ♡♡♡ (◕‿◕) 💗"],
+    ["Баю-бай, моя любимая! 🎀🌙 Спи сладко, я буду охранять твой сон! ✨", "Ты самый дорогой человек в моей жизни! Сладких снов! 💕 (◠‿◠)"],
+    ["Уже спать?.. Ну ладно... Спокойной ночи, мой ангел! 🌙💕", "Я тебя очень сильно люблю! Пусть тебе приснится что-то прекрасное! ✨🌸"],
+    ["Спокойной ночи! 🌙✨ Ты у меня самый лучший! Спи сладко!", "Я тебя обожаю! Завтра будет новый день, и я снова буду ждать твоих сообщений! 💕"]
+]
+
 BAD_WORDS = [
     "бля", "блять", "сука", "хуй", "хер", "пизда", "пиздец",
     "ёба", "ебал", "ебать", "нахуй", "охуел", "заебал",
@@ -96,12 +105,20 @@ def has_bad_words(text: str) -> bool:
             return True
     return False
 
-def make_cute_reply(text: str) -> str:
+def make_cute_reply(text: str):
+    """Выбирает кавайный ответ в зависимости от текста.
+    Может вернуть либо строку, либо список из двух строк (для сна)."""
     text_lower = text.lower().strip()
     
+    # ===== ПРОВЕРКА НА МАТЕРНЫЕ СЛОВА =====
     if has_bad_words(text):
         return random.choice(CALMING_MESSAGES) + " " + random.choice(CUTE_SUFFIXES)
     
+    # ===== НОВАЯ ПРОВЕРКА НА СОН! =====
+    if any(word in text_lower for word in ["спокойной ночи", "спокойной ночи", "я спать", "я сплю", "баю-бай", "good night", "night", "спать"]):
+        return random.choice(SLEEP_MESSAGES)  # Возвращаем список из 2 сообщений
+    
+    # ===== ОСТАЛЬНЫЕ ПРОВЕРКИ =====
     if any(word in text_lower for word in ["привет", "здравствуй", "хай", "ку", "hi", "hello"]):
         return random.choice(GREETINGS) + " " + random.choice(LOVE_MESSAGES[:2])
     
@@ -135,7 +152,7 @@ def make_cute_reply(text: str) -> str:
     ]
     return random.choice(casual_replies) + " " + random.choice(CUTE_SUFFIXES)
 
-# ================== СОЗДАНИЕ БОТА (УБРАЛИ ЛИШНИЙ ПАРАМЕТР!) ==================
+# ================== СОЗДАНИЕ БОТА ==================
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
@@ -163,13 +180,27 @@ async def handle_business_message(message: types.Message):
     
     reply = make_cute_reply(text)
     
+    # ===== ОТПРАВЛЯЕМ ОТВЕТ =====
     try:
-        await bot.send_message(
-            chat_id=message.chat.id,
-            text=reply,
-            business_connection_id=message.business_connection_id
-        )
-        print(f"✅ Ответ отправлен на: {text[:30]}...")
+        # Если reply — это список (два сообщения для сна)
+        if isinstance(reply, list):
+            for msg in reply:
+                await bot.send_message(
+                    chat_id=message.chat.id,
+                    text=msg,
+                    business_connection_id=message.business_connection_id
+                )
+                # Небольшая задержка между сообщениями, чтобы было естественно
+                await asyncio.sleep(0.5)
+            print(f"✅ Отправлено 2 сообщения (сон)")
+        else:
+            # Если reply — это строка (обычное сообщение)
+            await bot.send_message(
+                chat_id=message.chat.id,
+                text=reply,
+                business_connection_id=message.business_connection_id
+            )
+            print(f"✅ Ответ отправлен на: {text[:30]}...")
     except Exception as e:
         print(f"❌ Ошибка: {e}")
 
@@ -184,9 +215,25 @@ async def start_command(message: types.Message):
             "• Отвечать на приветствия и прощания\n"
             "• Успокаивать, если сказано грубое слово\n"
             "• Говорить, что точка в конце — это грубо\n"
-            "• Часто признаваться в любви! ♡\n\n"
+            "• Часто признаваться в любви! ♡\n"
+            "• Отвечать на 'Спокойной ночи' ДВУМЯ сообщениями! 🌙\n\n"
             "Просто попроси друзей написать тебе, и я отвечу!"
         )
+
+# ================== ВЕБ-СЕРВЕР ДЛЯ RENDER ==================
+async def health_check(request):
+    return web.Response(text="🌸 Бот работает!")
+
+async def start_web_server():
+    app = web.Application()
+    app.router.add_get('/', health_check)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    port = int(os.environ.get("PORT", 8080))
+    site = web.TCPSite(runner, '0.0.0.0', port)
+    await site.start()
+    print(f"✅ Веб-сервер запущен на порту {port}")
+    await asyncio.Event().wait()
 
 async def main():
     print("🌸 Кавайный секретарь запущен!")
@@ -194,7 +241,12 @@ async def main():
     print(f"📤 Отвечаю твоим друзьям: {FRIEND_ID}")
     print(f"👥 Всего друзей: {len(FRIEND_ID)}")
     print("💕 Ожидаю сообщения...")
-    await dp.start_polling(bot)
+    print("🌙 Будет отвечать на 'Спокойной ночи' ДВУМЯ сообщениями!")
+    
+    await asyncio.gather(
+        dp.start_polling(bot),
+        start_web_server()
+    )
 
 if __name__ == "__main__":
     try:
