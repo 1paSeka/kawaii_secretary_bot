@@ -1,13 +1,15 @@
 import random
 import asyncio
 import aiohttp
-import os  # ← ЭТО НОВОЕ!
+import sys  # ← ДОБАВИЛИ ЭТОТ ИМПОРТ
+import os
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiogram.client.default import DefaultBotProperties
 
 # ===== ЭТО ДЛЯ WINDOWS (решает проблемы с соединением) =====
-asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+if sys.platform == "win32":  # ← ТЕПЕРЬ ЭТО РАБОТАЕТ ТОЛЬКО НА WINDOWS
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
 # ================== ВАШИ ДАННЫЕ (БЕРЁМ ИЗ ПЕРЕМЕННЫХ ОКРУЖЕНИЯ) ==================
 BOT_TOKEN = os.getenv("8832864552:AAFAIyImLqGmgoW3ChsLTuK4hZfUcD87Ts4")
@@ -202,4 +204,9 @@ async def main():
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except Exception as e:
+        print(f"❌ Критическая ошибка: {e}")
+        import traceback
+        traceback.print_exc()
