@@ -12,9 +12,9 @@ if sys.platform == "win32":  # ← ТЕПЕРЬ ЭТО РАБОТАЕТ ТОЛЬ
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
 # ================== ВАШИ ДАННЫЕ (БЕРЁМ ИЗ ПЕРЕМЕННЫХ ОКРУЖЕНИЯ) ==================
-BOT_TOKEN = os.getenv("8832864552:AAFAIyImLqGmgoW3ChsLTuK4hZfUcD87Ts4")
-YOUR_USER_ID = int(os.getenv("5165249507"))
-FRIEND_IDS = os.getenv("5170507009", "7974783558")
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+YOUR_USER_ID = int(os.getenv("YOUR_USER_ID"))
+FRIEND_IDS = os.getenv("FRIEND_IDS", "")
 FRIEND_ID = [int(x.strip()) for x in FRIEND_IDS.split(",") if x.strip()]
 
 # Проверяем, что переменные заданы
